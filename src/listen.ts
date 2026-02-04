@@ -4,6 +4,7 @@ import * as http from 'http'
 import { defineConfig, subMultipleConfigs } from './config'
 import { app } from './index'
 import * as https from 'https'
+import * as http2 from 'http2'
 import { watchLoad } from './watchLoad'
 import { networkInterfaces } from 'os';
 import { getConnections, newConnection } from './connections'
@@ -26,12 +27,13 @@ import { consoleHint } from './consoleLog'
 
 interface ServerExtra { name: string, error?: string, busy?: Promise<string> }
 let httpSrv: undefined | http.Server & ServerExtra
-let httpsSrv: undefined | http.Server & ServerExtra
+// httpsSrv can be a plain http.Server or an http2.Http2SecureServer
+let httpsSrv: undefined | (http.Server & ServerExtra) | (import('http2').Http2SecureServer & ServerExtra)
 
 const openBrowserAtStart = defineConfig('open_browser_at_start', true)
 
 export const baseUrl = defineConfig(CFG.base_url, '',
-    x => /(?<=\/\/)[^\/]+/.exec(x)?.[0]) // compiled is host only
+    x => /(?<=//)[^/]+/.exec(x)?.[0]) // compiled is host only
 
 export async function getBaseUrlOrDefault() {
     return baseUrl.get() || await defaultBaseUrl.get()
@@ -110,12 +112,14 @@ const considerHttps = debounceAsync(async () => {
     try {
         const moreOptions = Object.assign({}, ...await events.emitAsync('httpsServerOptions') || [])  // emitAsync returns an array of objects
         httpsSrv = Object.assign(
-            https.createServer(port === PORT_DISABLED ? {} : {
+            // Use HTTP/2 secure server but allow HTTP/1 fallback so existing clients keep working.
+            http2.createSecureServer(port === PORT_DISABLED ? {} : {
+                allowHTTP1: true,
                 ...commonServerOptions,
                 key: privateKey.compiled(),
                 cert: cert.compiled(),
                 ...moreOptions,
-            }, app.callback()),
+            }, app.callback()) as import('http2').Http2SecureServer,
             { name: 'https' },
             commonServerAssign
         )
@@ -336,4 +340,3 @@ function printUrls(srvName: string) {
     getUrls().then(urls =>
         _.each(urls[srvName], url =>
             console.log('serving on', url)))
-}
