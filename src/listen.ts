@@ -301,9 +301,9 @@ export async function getServerStatus(includeSrv=true) {
         }
     }}
 
-const ignore = /^(lo|.*loopback.*|virtualbox.*|.*(wsl).*|llw\d|awdl\d|utun\d|anpi\d)$/i // avoid giving too much information
+const ignore = /^(lo|.*loopback.*|virtualbox.*|.*\(wsl\).*|llw\d|awdl\d|utun\d|anpi\d)$/i // avoid giving too much information
 
-// AKA auto-ip https://en.wikipedia.org/wiki/Link-local_address
+// AKA auto-ip https://en.wikipedia.org/wiki/Link-local-address
 const isLinkLocal = makeNetMatcher('169.254.0.0/16|FE80::/10')
 
 export async function getIps(external=true) {
@@ -340,4 +340,3 @@ function printUrls(srvName: string) {
     getUrls().then(urls =>
         _.each(urls[srvName], url =>
             console.log('serving on', url)))
-}
